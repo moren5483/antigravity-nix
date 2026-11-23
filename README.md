@@ -57,6 +57,8 @@ sudo nixos-rebuild switch --flake .#myhost
 - App 与 [Antigravity IDE](https://antigravity.google/) 是两个产品；本仓库只打包 App。
 - App 的 `app.asar` 是 Google 的闭源产物，本仓库只提供获取与运行方式，不分发其二进制。
 - 版本升级需要同步修改 `pkgs/antigravity-app.nix` 里的 `version`、`build` 与 `hash`（哈希可先用 `nix store prefetch-file` 取得）。
+- 汉化工具钉在上游的固定 commit（`zhRev`），上游 `main` 前进**不会**破坏本仓库的构建；升级汉化需手动改 `zhRev` 与 `hash`。
+- `flake.lock` 已提交，`nixos-unstable` 被锁定到具体 commit；需要跟进 unstable 时执行 `nix flake update nixpkgs`。
 
 ## 许可
 

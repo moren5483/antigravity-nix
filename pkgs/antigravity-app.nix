@@ -78,16 +78,20 @@ let
 
   # 汉化：antigravity_chinese_v2（MIT）源码 + Linux 补丁
   # 来源：https://github.com/nianshou555qiansui/antigravity_chinese_v2
+  # 钉死 commit 而不是 refs/heads/main：否则上游每 push 一次，hash 就失配、所有人都构建失败。
+  # 升级步骤：把 zhRev 换成新的 commit，重新取 hash（nix store prefetch-file <url>）。
+  zhRev = "1f5747c376369a45f40d9abebeedee09d6f3b6fe";
+
   zhTool = pkgs.stdenvNoCC.mkDerivation {
     pname = "antigravity-chinese-v2";
-    version = "main-2026-11";
+    version = "unstable-${builtins.substring 0 7 zhRev}";
     src = pkgs.fetchurl {
-      url = "https://codeload.github.com/nianshou555qiansui/antigravity_chinese_v2/tar.gz/refs/heads/main";
-      hash = "sha256-3CKuLEqfU06Q/plE7WXoyRr95fI6TBuZYNqKiv5kxwU=";
+      url = "https://codeload.github.com/nianshou555qiansui/antigravity_chinese_v2/tar.gz/${zhRev}";
+      hash = "sha256-l9t5WkGOvYWEF4T5FaKzRf54AERveII5H+zjai5gcCs=";
     };
 
     unpackPhase = "tar -xzf $src";
-    sourceRoot = "antigravity_chinese_v2-main";
+    sourceRoot = "antigravity_chinese_v2-${zhRev}";
     nativeBuildInputs = [ pkgs.python3 ];
     postPatch = ''
       ${pkgs.python3}/bin/python3 ${./antigravity-zh-linux.py} .
