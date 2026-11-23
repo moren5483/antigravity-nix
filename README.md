@@ -44,6 +44,13 @@ sudo nixos-rebuild switch --flake .#myhost
 
 > 注入只存在于内存：**每次都要从中文入口启动**才有中文；从英文入口打开就是原版。
 
+## 汉化来源 / Credits
+
+- **汉化工具**：[nianshou555qiansui/antigravity_chinese_v2](https://github.com/nianshou555qiansui/antigravity_chinese_v2)（MIT License）
+  - 上游面向 Windows / macOS，本仓库仅在构建时追加 Linux 兼容补丁（进程/端口发现、`--port` 直连、可执行文件探测），不修改词典与翻译内容
+  - 词典约 3989 条，版权归上游作者所有
+- **App 本体**：Google 官方发布，从 `storage.googleapis.com/antigravity-public/...` 获取，本仓库不分发二进制
+
 ## 已知限制
 
 - **登录地区限制**：Antigravity 需要 Google 账号，部分国家/地区会提示 "not available in your location"。这与汉化无关，本仓库不提供解锁。

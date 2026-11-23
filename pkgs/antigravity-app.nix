@@ -69,6 +69,7 @@ let
   };
 
   # 汉化：antigravity_chinese_v2（MIT）源码 + Linux 补丁
+  # 来源：https://github.com/nianshou555qiansui/antigravity_chinese_v2
   zhTool = pkgs.stdenvNoCC.mkDerivation {
     pname = "antigravity-chinese-v2";
     version = "main-2026-11";

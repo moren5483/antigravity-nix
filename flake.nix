@@ -1,4 +1,5 @@
 {
+  # 汉化来源：https://github.com/nianshou555qiansui/antigravity_chinese_v2 (MIT)
   description = "Google Antigravity App (Linux, FHS) with optional Chinese UI injection";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
