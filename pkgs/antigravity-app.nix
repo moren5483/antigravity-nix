@@ -110,13 +110,37 @@ let
     log="$HOME/.cache/antigravity-zh.log"
     mkdir -p "$(dirname "$log")"
 
-    if pgrep -f "opt/antigravity/antigravity" >/dev/null 2>&1; then
+    # App 跑在 bwrap 沙箱里，宿主机 /proc 看不到 /opt/antigravity/antigravity 这个 cmdline，
+    # 所以 pgrep 不可靠。改用 Electron 单实例锁里记录的宿主机 PID 判断存活。
+    app_pid() {
+      local lock link
+      lock="''${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/SingletonLock"
+      link="$(readlink "$lock" 2>/dev/null)" || return 1
+      printf '%s\n' "''${link##*-}"
+    }
+
+    app_running() {
+      local pid
+      pid="$(app_pid)" || return 1
+      [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
+    }
+
+    if app_running; then
       msg="请先完全退出 Antigravity App，再从“Antigravity App 中文”启动"
       command -v notify-send >/dev/null 2>&1 && notify-send "Antigravity 汉化" "$msg" || echo "$msg" >&2
       exit 1
     fi
 
-    exec ${pythonEnv}/bin/python ${zhTool}/share/antigravity-zh/hanhua_v2.py "$@" 2>&1 | tee -a "$log"
+    ${pythonEnv}/bin/python ${zhTool}/share/antigravity-zh/hanhua_v2.py "$@" 2>&1 | tee -a "$log"
+
+    # 关键：不要在这里退出。
+    # 桌面启动器（uwsm / noctalia 等）把 .desktop 的 Exec 包成 app-*.scope，
+    # 本进程就是该 scope 的主进程；注入器跑完就退出会让 scope 被回收，
+    # 连带把同一个 scope 里的 App SIGKILL 掉（表现为“窗口自己消失”，无任何日志）。
+    # 所以驻留到 App 真正退出为止，与英文入口（Exec 就是 App）行为一致。
+    while app_running; do
+      sleep 2
+    done
   '';
 
   desktop = pkgs.makeDesktopItem {

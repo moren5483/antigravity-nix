@@ -41,6 +41,7 @@ sudo nixos-rebuild switch --flake .#myhost
 2. 带 `--remote-debugging-port` 启动 App
 3. 通过 CDP 注入词典（约 3989 条）并持续监听新窗口
 4. 日志写到 `~/.cache/antigravity-zh.log`
+5. 注入完成后启动器**不退出**，一直驻留到 App 关闭（否则桌面启动器的 systemd scope 会被回收，连带杀掉 App）
 
 > 注入只存在于内存：**每次都要从中文入口启动**才有中文；从英文入口打开就是原版。
 
