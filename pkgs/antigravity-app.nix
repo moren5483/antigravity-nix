@@ -68,6 +68,14 @@ let
     runScript = launcher;
   };
 
+  # 图标：Antigravity 把图标放在 app.asar 里，构建时提取
+  icons = pkgs.runCommand "antigravity-app-icons" { nativeBuildInputs = [ pkgs.python3 ]; } ''
+    mkdir -p $out/share/icons/hicolor/512x512/apps
+    python3 ${./extract-asar-icon.py} \
+      ${app}/opt/antigravity/resources/app.asar \
+      $out/share/icons/hicolor/512x512/apps/antigravity-app.png
+  '';
+
   # 汉化：antigravity_chinese_v2（MIT）源码 + Linux 补丁
   # 来源：https://github.com/nianshou555qiansui/antigravity_chinese_v2
   zhTool = pkgs.stdenvNoCC.mkDerivation {
@@ -110,6 +118,7 @@ let
     name = "antigravity-app";
     exec = "antigravity-app %U";
     desktopName = "Antigravity App";
+    icon = "antigravity-app";
     comment = "Google Antigravity agent platform";
     categories = [ "Development" ];
     mimeTypes = [ "x-scheme-handler/antigravity" ];
@@ -119,6 +128,7 @@ let
     name = "antigravity-app-zh";
     exec = "antigravity-app-zh";
     desktopName = "Antigravity App 中文";
+    icon = "antigravity-app";
     comment = "Google Antigravity App（启动时自动注入简体中文）";
     genericName = "Antigravity 中文";
     categories = [ "Development" ];
@@ -126,5 +136,5 @@ let
   };
 in
 {
-  inherit app wrapped zhTool zhLauncher desktop desktopZh version;
+  inherit app wrapped icons zhTool zhLauncher desktop desktopZh version;
 }
