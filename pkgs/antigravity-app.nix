@@ -1,4 +1,4 @@
-# Google Antigravity App（2.x agent 平台）+ 中文注入工具，返回可复用的组件集合。
+# Google Antigravity App（2.x agent 平台），返回英文原版与中文版两套可复用组件。
 { pkgs }:
 
 let
@@ -20,6 +20,46 @@ let
     '';
   };
 
+  # 两个 FHS 环境共用同一套运行时依赖
+  fhsLibs =
+    p: with p;
+    [
+      alsa-lib
+      at-spi2-atk
+      at-spi2-core
+      cairo
+      cups
+      dbus
+      expat
+      glib
+      gtk3
+      libdrm
+      libGL
+      libgbm
+      libnotify
+      libpulseaudio
+      libxkbcommon
+      libsecret
+      nspr
+      nss
+      pango
+      systemd
+      udev
+      # xorg 包集已被 nixpkgs 弃用（aliases.nix, 2026-01-29），改用顶层小写属性
+      libx11
+      libxcomposite
+      libxcursor
+      libxdamage
+      libxext
+      libxfixes
+      libxi
+      libxrandr
+      libxrender
+      libxscrnsaver
+      libxcb
+      libxshmfence
+    ];
+
   launcher = pkgs.writeShellScript "antigravity-app" ''
     # 某些桌面环境会带 ELECTRON_RUN_AS_NODE，Electron 会退化成 Node 而不是 GUI
     unset ELECTRON_RUN_AS_NODE NODE_OPTIONS
@@ -28,44 +68,7 @@ let
 
   wrapped = pkgs.buildFHSEnv {
     name = "antigravity-app";
-    targetPkgs =
-      p: with p;
-      [
-        alsa-lib
-        at-spi2-atk
-        at-spi2-core
-        cairo
-        cups
-        dbus
-        expat
-        glib
-        gtk3
-        libdrm
-        libGL
-        libgbm
-        libnotify
-        libpulseaudio
-        libxkbcommon
-        libsecret
-        nspr
-        nss
-        pango
-        systemd
-        udev
-        # xorg 包集已被 nixpkgs 弃用（aliases.nix, 2026-01-29），改用顶层小写属性
-        libx11
-        libxcomposite
-        libxcursor
-        libxdamage
-        libxext
-        libxfixes
-        libxi
-        libxrandr
-        libxrender
-        libxscrnsaver
-        libxcb
-        libxshmfence
-      ];
+    targetPkgs = fhsLibs;
     runScript = launcher;
   };
 
@@ -77,7 +80,7 @@ let
       $out/share/icons/hicolor/512x512/apps/antigravity-app.png
   '';
 
-  # 汉化：antigravity_chinese_v2（MIT）源码 + Linux 补丁
+  # 汉化：antigravity_chinese_v2（MIT）引擎与词典
   # 来源：https://github.com/nianshou555qiansui/antigravity_chinese_v2
   # 钉死 commit 而不是 refs/heads/main：否则上游每 push 一次，hash 就失配、所有人都构建失败。
   # 升级步骤：把 zhRev 换成新的 commit，重新取 hash（nix store prefetch-file <url>）。
@@ -105,42 +108,35 @@ let
 
   pythonEnv = pkgs.python3.withPackages (ps: [ ps.websockets ]);
 
-  zhLauncher = pkgs.writeShellScriptBin "antigravity-app-zh" ''
-    export PATH=${wrapped}/bin:$PATH
-    log="$HOME/.cache/antigravity-zh.log"
-    mkdir -p "$(dirname "$log")"
+  # 中文版：构建期把翻译引擎作为 preload 注入 app.asar 的副本。
+  # 这样不需要 --remote-debugging-port、不需要常驻的注入器进程，
+  # 页面重载后也不会丢汉化（见 pkgs/inject-zh-preload.py 顶部说明）。
+  appZh = pkgs.runCommand "antigravity-app-zh-unwrapped-${version}" {
+    nativeBuildInputs = [ pythonEnv ];
+  } ''
+    mkdir -p $out/opt
+    cp -a ${app}/opt/antigravity $out/opt/antigravity
+    chmod -R u+w $out/opt/antigravity
+    python3 ${./inject-zh-preload.py} \
+      --asar $out/opt/antigravity/resources/app.asar \
+      --engine-dir ${zhTool}/share/antigravity-zh
+  '';
 
-    # App 跑在 bwrap 沙箱里，宿主机 /proc 看不到 /opt/antigravity/antigravity 这个 cmdline，
-    # 所以 pgrep 不可靠。改用 Electron 单实例锁里记录的宿主机 PID 判断存活。
-    app_pid() {
-      local lock link
-      lock="''${XDG_CONFIG_HOME:-$HOME/.config}/Antigravity/SingletonLock"
-      link="$(readlink "$lock" 2>/dev/null)" || return 1
-      printf '%s\n' "''${link##*-}"
-    }
+  zhLauncher = pkgs.writeShellScript "antigravity-app-zh" ''
+    unset ELECTRON_RUN_AS_NODE NODE_OPTIONS
+    exec ${appZh}/opt/antigravity/antigravity "$@"
+  '';
 
-    app_running() {
-      local pid
-      pid="$(app_pid)" || return 1
-      [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null
-    }
+  wrappedZh = pkgs.buildFHSEnv {
+    name = "antigravity-app-zh";
+    targetPkgs = fhsLibs;
+    runScript = zhLauncher;
+  };
 
-    if app_running; then
-      msg="请先完全退出 Antigravity App，再从“Antigravity App 中文”启动"
-      command -v notify-send >/dev/null 2>&1 && notify-send "Antigravity 汉化" "$msg" || echo "$msg" >&2
-      exit 1
-    fi
-
-    ${pythonEnv}/bin/python ${zhTool}/share/antigravity-zh/hanhua_v2.py "$@" 2>&1 | tee -a "$log"
-
-    # 关键：不要在这里退出。
-    # 桌面启动器（uwsm / noctalia 等）把 .desktop 的 Exec 包成 app-*.scope，
-    # 本进程就是该 scope 的主进程；注入器跑完就退出会让 scope 被回收，
-    # 连带把同一个 scope 里的 App SIGKILL 掉（表现为“窗口自己消失”，无任何日志）。
-    # 所以驻留到 App 真正退出为止，与英文入口（Exec 就是 App）行为一致。
-    while app_running; do
-      sleep 2
-    done
+  # 上游引擎与词典按 MIT 分发，许可证随包提供
+  zhLicenses = pkgs.runCommand "antigravity-zh-licenses" { } ''
+    mkdir -p $out/share/antigravity-zh
+    cp ${zhTool}/share/antigravity-zh/LICENSE $out/share/antigravity-zh/LICENSE
   '';
 
   desktop = pkgs.makeDesktopItem {
@@ -155,15 +151,26 @@ let
 
   desktopZh = pkgs.makeDesktopItem {
     name = "antigravity-app-zh";
-    exec = "antigravity-app-zh";
+    exec = "antigravity-app-zh %U";
     desktopName = "Antigravity App 中文";
     icon = "antigravity-app";
-    comment = "Google Antigravity App（启动时自动注入简体中文）";
+    comment = "Google Antigravity App（构建期注入简体中文）";
     genericName = "Antigravity 中文";
     categories = [ "Development" ];
     mimeTypes = [ "x-scheme-handler/antigravity" ];
   };
 in
 {
-  inherit app wrapped icons zhTool zhLauncher desktop desktopZh version;
+  inherit
+    app
+    wrapped
+    appZh
+    wrappedZh
+    icons
+    zhTool
+    zhLicenses
+    desktop
+    desktopZh
+    version
+    ;
 }

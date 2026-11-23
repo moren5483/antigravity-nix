@@ -15,7 +15,7 @@
       packages.${system} = {
         default = parts.wrapped;
         antigravity-app = parts.wrapped;
-        antigravity-app-zh = parts.zhLauncher;
+        antigravity-app-zh = parts.wrappedZh;
       };
 
       nixosModules.default = ./modules/antigravity-app.nix;
