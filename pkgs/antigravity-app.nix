@@ -52,18 +52,19 @@ let
         pango
         systemd
         udev
-        xorg.libX11
-        xorg.libXcomposite
-        xorg.libXdamage
-        xorg.libXext
-        xorg.libXfixes
-        xorg.libXrandr
-        xorg.libXrender
-        xorg.libXi
-        xorg.libXcursor
-        xorg.libXScrnSaver
-        xorg.libxcb
-        xorg.libxshmfence
+        # xorg 包集已被 nixpkgs 弃用（aliases.nix, 2026-01-29），改用顶层小写属性
+        libx11
+        libxcomposite
+        libxcursor
+        libxdamage
+        libxext
+        libxfixes
+        libxi
+        libxrandr
+        libxrender
+        libxscrnsaver
+        libxcb
+        libxshmfence
       ];
     runScript = launcher;
   };
